@@ -31,3 +31,6 @@ v5 状态审查与验证记录见 [runbook](../docs/runbooks/h3_prompt_rewriter_
 
 ## v5 独立状态审查
 每条输出增加一次独立 Luna 审查，直接读取原文和完整输出，不看第一轮 checklist 判定。逐句明确初始状态、变化、最终状态及输出的最终状态；缺失、矛盾计严重错误，不确定禁止正优势。结构不完整按评审失败处理。该审查增加一次模型调用，不能保证语义零误判。v4 历史训练及评测保留原评分口径。笑脸 benchmark 仅作为已知失败回归验证，不能再作为独立泛化证明。
+
+## 2k 评分问题预设计
+`prepare_prompts.py --sft <SFT> --output <JOB> --count 2000` 单独选取去重、隔离 held-out 的真实训练数据；按可用数据平衡文本/图文，不重复填充不足的任务类型。`design_questions.py --inputs <JOB>/pilot_inputs.jsonl --output <JOB>/scoring_questions.jsonl --port <local-port> --workers 16` 预提取要求，为每项要求和原文每个句子保存检查问题，逐条落盘并支持重跑补齐。结构校验不等于语义认证；该文件是评分设计资产，不会自动替换正在运行的 reward。

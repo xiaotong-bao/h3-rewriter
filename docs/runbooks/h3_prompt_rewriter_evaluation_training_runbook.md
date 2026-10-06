@@ -1,6 +1,6 @@
 # H3 rewriter：统一评价、TRL SFT 与 GRPO runbook
 
-更新：2026-10-06。**当前执行入口为 §13 的 v4 本机重跑；§7–8 保留旧 v3 实验协议与迁移记录。**适用于 HB10 的 Qwen3.5-9B、retention v2 system、官方 Qwen 模板，以及原始 101 条 t2va/i2va 测试集。代码位于 [仓库根目录](../../)。数据制作、官方 Context-IR 标签验证及历史五组比较见 [数据 runbook](h3_prompt_rewriter_data_runbook.md)。
+更新：2026-10-06。**v4 已完成训练；新版 reward 见 §14，统一 FAL/EP3/GRPO 审查见 §15；§7–8 保留旧 v3 实验协议与迁移记录。**适用于 HB10 的 Qwen3.5-9B、retention v2 system、官方 Qwen 模板，以及原始 101 条 t2va/i2va 测试集。代码位于 [仓库根目录](../../)。数据制作、官方 Context-IR 标签验证及历史五组比较见 [数据 runbook](h3_prompt_rewriter_data_runbook.md)。
 
 ## 1. 评价对象与独立指标
 
@@ -366,3 +366,12 @@ v4 在笑脸车窗 case 中漏判末句反转：雾蒸发后却仍遮住玻璃�
 该修复增加一次模型调用，不能保证模型评审零误判。已知笑脸 benchmark 用于针对性回归，属于开发样本，不能作为独立泛化证据。针对性验证：实际 step32 错误输出在 v5 得 -0.6；正确消散与原文明确要求重新起雾的对照均得 1.0。20 项固定环境回归测试通过；17/17 条真实 Luna 合成校准通过。完整验证文件在 HB10 `/home/xiaotong/grpo_ep3_luna_v5_20261006/reward_fix_validation.json`。
 
 后续新训练先用 `bootstrap_runtime.py grpo --job grpo_ep3_luna_v5_20261006 --include-calibration-sources` 生成新 JOB 授权及校准来源，复制当前 `grpo/*.py`，启动 `start_luna_runtime.py`。然后运行 `calibrate_judge.py --port 8794 --output <JOB>/calibration_receipt.json`；17 条合成校准必须全部通过才能进入新训练。`run_pipeline.py` 随后预提取 256 条要求。当前未启动 v5 模型训练；v4 step32/64 的原评测保持原口径。
+
+
+## 15. FAL、当前 EP3 与 GRPO 的统一重审
+
+五组使用同一批 101 ID/原文：FAL 原始输出、当前 TRL EP3 checkpoint-906 未合并输出、matched merged EP3 初始化、v4 GRPO checkpoint-32、v4 GRPO final（64step）。已核对原文完全一致。不重生成，不清洗格式，不把历史审查快照直接拼接。使用 GPT-6 Astra high，冻结 `ep3-v2-astra-state-unified-v1`（v5 checklist + 独立状态审查），评审不接收模型标签；先通过17条合成校准。每条保存原始输出、SHA、要求、两个审查与证据。
+
+入口 `review/unified_compare.py`。语义主表只统计五组共同有效配对；某一组 judge 失败，该 ID 在五组语义统计中均排除，报告未知数，不能冒充全101。raw格式使用同一检查器（支持 Image 1 和 <Picture 1>），分母为各组已审输出。语义保留、严重程度、状态结尾、配乐/台词单列，不能相加为总错误率。该比较统一评分口径，不宣称各组历史生成过程相同；图像忠实度及生成视频效果未验证。笑脸 case 已用于评分开发，不能再称其独立 held-out。
+
+实际本机工作目录：`/home/xiaotong/unified_fal_ep3_grpo_101_20261006`，独立 Astra gateway `127.0.0.1:8796`。结果文件 `COMPARISON.md`、`summary.json`、`audits.jsonl`；`COMPLETE` 仅在五组101条全部有效后写入。结果当前执行中，不能填写未完成的全量结论。
