@@ -26,3 +26,5 @@
 
 结果缓存、运行 receipts、模型/媒体和真实原文/输出均留在外部；revision隔离旧v3缓存。
 训练 reward 与 Luna 自审仅是探索性指标，不能替代完整101独立审查。
+
+启动流程在 GPU 训练前调用 `precompute_requirements.py`，并发预提取全部训练 prompt 的要求并写入本机 Luna 缓存；全部校验通过才进入 smoke/pilot。正在运行的实验可单独执行该脚本补齐缓存，建议 `--workers 4` 为训练评审保留并发容量。

@@ -10,6 +10,8 @@ assert calibration['passed'] and calibration['judge_revision']==JUDGE_REVISION a
 port=PORT
 with urllib.request.urlopen(f'http://127.0.0.1:{port}/',timeout=5) as response:judge_health=json.load(response)
 assert judge_health.get('ready') and judge_health.get('revision')==JUDGE_REVISION and judge_health.get('model')=='gpt-6-luna','Local Luna gateway is not ready'
+state('requirements',state='running')
+subprocess.run([sys.executable,str(ROOT/'precompute_requirements.py'),'--inputs',str(ROOT/'pilot_inputs.jsonl'),'--port',str(PORT),'--receipt',str(ROOT/'requirements_receipt.json')],check=True)
 while not (ROOT/'MERGE_READY').is_file():time.sleep(10)
 (ROOT/'environment.freeze.txt').write_text(subprocess.check_output([sys.executable,'-m','pip','freeze'],text=True))
 for stage,flags in [('smoke',['--smoke']),('pilot',['--steps','64'])]:
