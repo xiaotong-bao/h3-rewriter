@@ -1,8 +1,8 @@
-# EP3 GRPO with Linux-local Luna v4
+# EP3 GRPO with Linux-local Luna v5
 
-当前入口默认使用 `grpo_ep3_luna_v4_20261006`、`ep3-v2-luna-checklist-v4` 和本机 `127.0.0.1:8793`。
+当前入口默认使用 `grpo_ep3_luna_v5_20261006`、`ep3-v2-luna-state-v5` 和本机 `127.0.0.1:8794`。
 `H3_GRPO_JOB`、`H3_LUNA_PORT` 可显式覆盖。新实验从冻结 EP3 初始化，不续训退化的旧 step64 adapter。
-完整流程、历史结果和当前启动命令见 [runbook](../docs/runbooks/h3_prompt_rewriter_evaluation_training_runbook.md#13-v4-修复与全本机重跑)。
+v5 状态审查与验证记录见 [runbook](../docs/runbooks/h3_prompt_rewriter_evaluation_training_runbook.md#14-v5-状态转换-reward-修复2026-10-06)。
 
 ## 修复
 
@@ -16,15 +16,18 @@
 
 保留原来的 8 ranks、microbatch1、累积2、8 candidates/input、64 steps、LR5e-6、beta.02、DAPO、temperature.8/top_p.95、completion cap2048，以及语言 LoRA32/64。每步两个输入，共128个输入呈现和1024候选，并非完整遍历256原文。
 `prepare_merge.py` 可从 EP3 重新合并；本次新 JOB 复用经原 EP3 adapter SHA 和官方 template SHA 核验的同一冻结 merged 初始化。
-`bootstrap_runtime.py grpo --root /work --job grpo_ep3_luna_v4_20261006` 生成本地授权/357-source allowlist。
+`bootstrap_runtime.py grpo --root /work --job grpo_ep3_luna_v5_20261006` 生成本地授权/source allowlist。
 
 `start_luna_runtime.py` 启动本机 supervisor 并等待 gateway 就绪；不使用 Mac、SSH 或 caffeinate。
 `run_pipeline.py` 检查 local Codex runtime/revision 和真实校准 receipt，执行2步smoke、重新从EP3跑64步pilot，再执行matched greedy101评价。
 只有完整 adapter/optimizer/scheduler/trainer_state/8 rank RNG 的 checkpoint 才允许自动恢复。
-`monitor_training.py --job /data/.../grpo_ep3_luna_v4_20261006` 直接监控本机文件，无 SSH。
+`monitor_training.py --job /data/.../grpo_ep3_luna_v5_20261006` 直接监控本机文件，无 SSH。
 可选256 Luna/Sol审查直接读取同目录生成文件，也不再 rsync 到远端。
 
 结果缓存、运行 receipts、模型/媒体和真实原文/输出均留在外部；revision隔离旧v3缓存。
 训练 reward 与 Luna 自审仅是探索性指标，不能替代完整101独立审查。
 
 启动流程在 GPU 训练前调用 `precompute_requirements.py`，并发预提取全部训练 prompt 的要求并写入本机 Luna 缓存；全部校验通过才进入 smoke/pilot。正在运行的实验可单独执行该脚本补齐缓存，建议 `--workers 4` 为训练评审保留并发容量。
+
+## v5 独立状态审查
+每条输出增加一次独立 Luna 审查，直接读取原文和完整输出，不看第一轮 checklist 判定。逐句明确初始状态、变化、最终状态及输出的最终状态；缺失、矛盾计严重错误，不确定禁止正优势。结构不完整按评审失败处理。该审查增加一次模型调用，不能保证语义零误判。v4 历史训练及评测保留原评分口径。笑脸 benchmark 仅作为已知失败回归验证，不能再作为独立泛化证明。

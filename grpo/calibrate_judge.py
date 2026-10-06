@@ -29,6 +29,10 @@ def cases():
  for i,(source,good,bads) in enumerate(groups):
   result.append({'id':f'{i}_faithful','original':source,'rewrite':rewrite(good),'expect':'faithful'})
   for n,bad in enumerate(bads):result.append({'id':f'{i}_critical_{n}','original':source,'rewrite':rewrite(bad),'expect':'critical'})
+ result.extend([
+  {'id':'state_correct_clear','original':'A misted glass pane clears until transparent.','rewrite':rewrite('A misted glass pane clears until fully transparent.'),'expect':'faithful'},
+  {'id':'state_wrong_final','original':'A misted glass pane clears until transparent.','rewrite':rewrite('A misted glass pane clears until transparent. In the final view the same glass remains opaque with mist.'),'expect':'critical'},
+  {'id':'state_requested_remist','original':'A misted glass pane clears, then becomes misted again.','rewrite':rewrite('A misted glass pane clears, then becomes misted again.'),'expect':'faithful'}])
  source,good,_=groups[0]
  result.extend([
   {'id':'unrequested_music','original':source,'rewrite':rewrite(good,music='A slow piano melody plays.'),'expect':'music'},

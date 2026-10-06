@@ -15,7 +15,7 @@ def validate_requirements(source, requirements):
     assert covered == {s['id'] for s in spans}, 'Source sentences missing from checklist'
     return requirements
 
-def validate_and_score(source, rewrite, requirements, result):
+def validate_and_score(source, rewrite, requirements, result, require_state_audit=False):
     validate_requirements(source, requirements)
     lookup = {r['id']:r for r in requirements}
     checklist = result['checklist']
@@ -52,6 +52,26 @@ def validate_and_score(source, rewrite, requirements, result):
     for flag,category in [('unrequested_music','v2_music'),('unrequested_dialogue','v2_dialogue')]:
         assert isinstance(result[flag],bool)
         assert result[flag] == any(i['category']==category for i in result['v2_issues']), 'Flag and issue list disagree: '+flag
+    if require_state_audit:
+        assert 'state_audit' in result, 'Independent state audit missing'
+    if 'state_audit' in result:
+        states=result['state_audit']
+        assert len(states)==len(original) and {s['source_id'] for s in states}=={s['id'] for s in original}, 'Incomplete state audit'
+        for state in states:
+            assert state['status'] in ('preserved','omitted','contradicted','uncertain','not_applicable')
+            assert all(isinstance(state[k],str) and state[k].strip() for k in ('expected_initial','expected_transition','expected_final','actual_final','reason'))
+            evidence=selected_spans(state['evidence_ids'],spans)
+            if state['status'] in ('preserved','contradicted'):assert evidence, 'State judgment lacks evidence'
+            if state['status']=='not_applicable':
+                assert all(state[k]=='N/A' for k in ('expected_initial','expected_transition','expected_final')), 'State constraint cannot be skipped'
+            if state['status'] in ('preserved','not_applicable'):continue
+            severity='review' if state['status']=='uncertain' else 'severe'
+            # Retain audit separately; avoid recharging a same-source severe violation.
+            if any(i['severity']==severity and state['source_id'] in i['source_ids'] for i in issues):continue
+            issues.append({'severity':severity,'status':state['status'],'category':'state_transition',
+                'source_ids':[state['source_id']],'evidence_ids':state['evidence_ids'],
+                'source_evidence':selected_spans([state['source_id']],original)[0]['text'],
+                'evidence':' ... '.join(s['text'] for s in evidence),'reason':state['reason']})
     for i,item in enumerate(issues,1):item['id']=i
     counts={level:sum(i['severity']==level for i in issues) for level in LEVELS}
     reward=1.-.8*min(counts['severe'],2)-.1*min(counts['general'],3)-.02*min(counts['review'],3)
@@ -62,6 +82,7 @@ def validate_and_score(source, rewrite, requirements, result):
 
 def positive_eligible(verdict, format_valid):
     if verdict.get('judge_failed') or not format_valid:return False
+    if any(s['status'] not in ('preserved','not_applicable') for s in verdict.get('state_audit',[])):return False
     if verdict['severity_counts']['severe'] or verdict['unrequested_music'] or verdict['unrequested_dialogue']:return False
     critical={r['id'] for r in verdict['requirements'] if r['critical']}
     return not any(i['requirement_id'] in critical and i['status']!='preserved' for i in verdict['checklist'])

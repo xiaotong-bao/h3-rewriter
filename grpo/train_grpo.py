@@ -29,7 +29,7 @@ def call(payload):
             assert result.get('judge_revision')==JUDGE_REVISION and result.get('judge_model')=='gpt-6-luna' and result.get('reasoning_effort')=='high'
             reported=result['reward']
             assert isinstance(reported,(int,float)) and not isinstance(reported,bool) and math.isfinite(reported)
-            validate_and_score(payload['original'],payload['rewrite'],result['requirements'],result)
+            validate_and_score(payload['original'],payload['rewrite'],result['requirements'],result,require_state_audit=True)
             assert math.isclose(reported,result['reward'],abs_tol=1e-8),'Inconsistent reward'
             return result
         except Exception as error:

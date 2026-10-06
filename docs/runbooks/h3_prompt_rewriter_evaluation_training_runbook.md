@@ -357,3 +357,12 @@ docker run -d --name xiaotong-grpo-ep3-luna-v4-20261006 --gpus all --network hos
 ```
 
 监控新JOB的`pipeline_status.json`、`smoke.log`、`pilot/status.json`、`pilot.log`、`rollouts.rank*.jsonl`和`advantages.rank*.jsonl`，以及本机runtime的watchdog状态。完成101后只对judge失败重审，保留原始rewrites；重审工具需显式`--job grpo_ep3_luna_v4_20261006 --port 8793`。不得把v4训练reward与旧v3数值当作同一评价器的可比指标，也不得拿训练采样输出替代greedy101。
+
+
+## 14. v5 状态转换 reward 修复（2026-10-06）
+
+v4 在笑脸车窗 case 中漏判末句反转：雾蒸发后却仍遮住玻璃。v5 (`ep3-v2-luna-state-v5`, 本机端口 8794，默认新 JOB `grpo_ep3_luna_v5_20261006`) 增加独立 Luna 状态审查。该调用不读取第一轮结论，按每个原文句子对照初始状态、变化、最终状态及完整输出的最终状态。缺失/矛盾为严重错误；不确定禁止正优势；审查缺失或不完整按不可评分处理。重复的同句严重错误不重复扣分，两个审查的完整证据均保留。旧 v4 运行及缓存不改写。
+
+该修复增加一次模型调用，不能保证模型评审零误判。已知笑脸 benchmark 用于针对性回归，属于开发样本，不能作为独立泛化证据。针对性验证：实际 step32 错误输出在 v5 得 -0.6；正确消散与原文明确要求重新起雾的对照均得 1.0。20 项固定环境回归测试通过；17/17 条真实 Luna 合成校准通过。完整验证文件在 HB10 `/home/xiaotong/grpo_ep3_luna_v5_20261006/reward_fix_validation.json`。
+
+后续新训练先用 `bootstrap_runtime.py grpo --job grpo_ep3_luna_v5_20261006 --include-calibration-sources` 生成新 JOB 授权及校准来源，复制当前 `grpo/*.py`，启动 `start_luna_runtime.py`。然后运行 `calibrate_judge.py --port 8794 --output <JOB>/calibration_receipt.json`；17 条合成校准必须全部通过才能进入新训练。`run_pipeline.py` 随后预提取 256 条要求。当前未启动 v5 模型训练；v4 step32/64 的原评测保持原口径。
