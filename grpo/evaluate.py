@@ -1,5 +1,5 @@
 """Compare EP3 and GRPO with exactly the SFT 101-case generation protocol."""
-import json,os,pathlib,re
+import argparse,json,os,pathlib,re
 import torch
 import torch.distributed as dist
 from peft import PeftModel
@@ -8,6 +8,11 @@ from train_grpo import call
 from format_rules import check_format
 
 from run_config import JOB as ROOT, PORT, JUDGE_REVISION
+parser=argparse.ArgumentParser()
+parser.add_argument('--checkpoint',type=pathlib.Path,default=ROOT/'pilot/final_adapter')
+parser.add_argument('--output',type=pathlib.Path,default=ROOT/'evaluation_101')
+args=parser.parse_args()
+assert (args.checkpoint/'adapter_model.safetensors').is_file(), 'Checkpoint adapter is missing'
 SFT=pathlib.Path('/work/trl_sft_official_v2_20261006')
 rank=int(os.environ.get('RANK',0));world=int(os.environ.get('WORLD_SIZE',1));local=int(os.environ.get('LOCAL_RANK',0))
 torch.cuda.set_device(local)
@@ -20,8 +25,8 @@ assert len(inputs)==len(baseline)==101
 p=AutoProcessor.from_pretrained(ROOT/'sft_init')
 p.image_processor.size={'shortest_edge':3136,'longest_edge':200704}
 model=Qwen3_5ForConditionalGeneration.from_pretrained(ROOT/'sft_init',dtype=torch.bfloat16,attn_implementation='sdpa').cuda()
-model=PeftModel.from_pretrained(model,ROOT/'pilot/final_adapter').eval()
-out=ROOT/'evaluation_101';out.mkdir(exist_ok=True);path=out/f'rank{rank}.jsonl'
+model=PeftModel.from_pretrained(model,args.checkpoint).eval()
+out=args.output;out.mkdir(parents=True,exist_ok=True);path=out/f'rank{rank}.jsonl'
 done={r['id'] for r in map(json.loads,path.read_text().splitlines())} if path.exists() else set()
 for row in inputs[rank::world]:
  if row['id'] in done:continue
@@ -53,7 +58,7 @@ if rank==0:
  rows=[json.loads(s) for i in range(world) for s in (out/f'rank{i}.jsonl').read_text().splitlines()]
  assert len(rows)==len({r['id'] for r in rows})==101
  valid=[r for r in rows if not r['baseline_audit'].get('judge_failed') and not r['grpo_audit'].get('judge_failed') and not r['initial_audit'].get('judge_failed')]
- summary={'rows':101,'valid_pairs':len(valid),'judge_failed_pairs':101-len(valid),
+ summary={'checkpoint':str(args.checkpoint),'judge_revision':JUDGE_REVISION,'rows':101,'valid_pairs':len(valid),'judge_failed_pairs':101-len(valid),
   'scope':'GPT-6 Luna exploratory paired audit; independent Codex session case review still required'}
  for label in ('baseline','initial','grpo'):
   values=[r[label+'_audit'] for r in valid]
