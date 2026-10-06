@@ -1,7 +1,7 @@
 """Retry failed judges on saved raw rewrites, preserving the original evaluation."""
 import argparse,concurrent.futures,json,pathlib,time,urllib.request
-p=argparse.ArgumentParser();p.add_argument('--root',type=pathlib.Path,required=True);p.add_argument('--port',type=int,default=8792);a=p.parse_args()
-job=a.root/'grpo_ep3_luna_v2_20261006';src=job/'evaluation_101';out=src/'recovered';out.mkdir(exist_ok=True)
+p=argparse.ArgumentParser();p.add_argument('--root',type=pathlib.Path,required=True);p.add_argument('--port',type=int,default=8793);p.add_argument('--job',default='grpo_ep3_luna_v4_20261006');a=p.parse_args()
+job=a.root/a.job;src=job/'evaluation_101';out=src/'recovered';out.mkdir(exist_ok=True)
 assert (src/'COMPLETE').is_file(),'Wait for generation and initial audit to finish'
 inputs={r['id']:r for r in map(json.loads,(a.root/'benchmark_jobs/arena_original_101_retention_v2_20261005/data/inputs.jsonl').read_text().splitlines())}
 rows=[json.loads(s) for s in (src/'comparison.jsonl').read_text().splitlines()]

@@ -1,50 +1,28 @@
-# EP3 GRPO with GPT-6 Luna reward
+# EP3 GRPO with Linux-local Luna v4
 
-Snapshot of `grpo_ep3_luna_v2_20261006` on HB10. Start from fresh official-template
-TRL SFT EP3 `checkpoint-906`, not old LLaMA-Factory step604 or an old GRPO adapter.
+当前入口默认使用 `grpo_ep3_luna_v4_20261006`、`ep3-v2-luna-checklist-v4` 和本机 `127.0.0.1:8793`。
+`H3_GRPO_JOB`、`H3_LUNA_PORT` 可显式覆盖。新实验从冻结 EP3 初始化，不续训退化的旧 step64 adapter。
+完整流程、历史结果和当前启动命令见 [runbook](../docs/runbooks/h3_prompt_rewriter_evaluation_training_runbook.md#13-v4-修复与全本机重跑)。
 
-`prepare_merge.py` selects 128 t2va + 128 i2va training inputs, excluding videos,
-validation/101 prompt hashes and validation image overlaps. It keeps the original
-SFT `prompt_json` ordering, merges EP3 into the frozen base, writes the processor
-and checks the official template/EOS plus a next-token argmax comparison. The
-merged reference may differ numerically from unmerged EP3; `evaluate.py` therefore
-includes both the historical EP3 and a matched merged-zero-GRPO control.
+## 修复
 
-`train_grpo.py`: 8 ranks, microbatch 1, accumulation 2, 8 candidates/input,
-64 steps, LR 5e-6, language-only new LoRA 32/64, beta .02, DAPO loss,
-`temperature=.8`, `top_p=.95`, maximum completion 2048, official non-thinking
-template, EOS 248046/pad 248044. Each step uses two prompt presentations and
-16 candidates; the 64-step pilot is 128 presentations, not a full pass over 256.
+- `luna_judge.py`：先缓存原文完整 atomic requirements，再逐项审查整个 rewrite。所有 source sentences 必须覆盖，所有 requirement IDs 必须恰好判定一次；critical 确认违规不能降级为 general。
+- `reward_policy.py`：音乐/台词 flag 必须与 v2 清单一致；与源 checklist 的同一违规通过 covered_requirement_id 关联，只计一次。矛盾判定不进入缓存，调用方会重试。
+- `train_grpo.py`：重试后仍失败的 judge 返回 None，固定 TRL 将其排除出组均值/方差；门禁同时清空其 completion_mask，所以连 KL 梯度也不参与。
+- `QualityGatedGRPOTrainer`：在 TRL 计算实际 advantage 后，把格式失败、severe、未要求音乐/台词以及关键要求待复核的正优势置零；保留已有负优势。逐条核对 completion token IDs 与 verdict 对齐，记录 raw/gated advantage。这是标准 GRPO 之上的显式约束，不靠加大格式扣分假装硬门槛。
+- `calibrate_judge.py`：14 个合成回归样本，包含正确保留、方向/动作/结局/数量错误及音乐/台词/格式违规。不得使用 held-out 101 输出来调训练规则；pipeline 强制校准通过后才启动。
 
-`luna_judge.py`: `gpt-6-luna`, reasoning `high`, revision
-`ep3-v2-luna-severity-v3`. One grounded structured review per candidate, model calls
-through ephemeral Codex CLI with Apps, shell, web and multi-agent tools disabled.
-The locally logged-in Codex CLI keeps authentication on HB10. Training uses local
-loopback 8792, configurable through H3_LUNA_PORT; no SSH forward is required.
-Eight training ranks submit concurrently; each rank uses
-up to four request threads, and the gateway caps concurrent CLI processes at 16.
-With current microbatch 1, active requests need not reach that cap.
+## 运行
 
-Reward: `1 - .8*min(severe,2) - .1*min(general,3) - .02*min(review,3)`;
-mechanical format failure subtracts .3. Failures are retried three times and then
-receive an operational score of -1 (and another -.3 if format fails), explicitly
-marked `judge_failed`; no false semantic verdict is created.
+保留原来的 8 ranks、microbatch1、累积2、8 candidates/input、64 steps、LR5e-6、beta.02、DAPO、temperature.8/top_p.95、completion cap2048，以及语言 LoRA32/64。每步两个输入，共128个输入呈现和1024候选，并非完整遍历256原文。
+`prepare_merge.py` 可从 EP3 重新合并；本次新 JOB 复用经原 EP3 adapter SHA 和官方 template SHA 核验的同一冻结 merged 初始化。
+`bootstrap_runtime.py grpo --root /work --job grpo_ep3_luna_v4_20261006` 生成本地授权/357-source allowlist。
 
-`start_luna_runtime.py` starts the Linux supervisor. `runtime_watchdog.py`
-checks local health and restores only gateway children it owns. `run_pipeline.py`
-checks the local Luna model/revision before starting and
-executes a two-step smoke, then the 64-step pilot, then matched greedy 101-case
-inference and Luna exploratory review. It resumes the most recent valid saved
-checkpoint on a restart, and fails visibly for non-judge training errors.
-The user's explicit decision to start directly waived the complete 256-pair
-audit gate; these receipts must be recreated locally, never copied as credentials.
+`start_luna_runtime.py` 启动本机 supervisor 并等待 gateway 就绪；不使用 Mac、SSH 或 caffeinate。
+`run_pipeline.py` 检查 local Codex runtime/revision 和真实校准 receipt，执行2步smoke、重新从EP3跑64步pilot，再执行matched greedy101评价。
+只有完整 adapter/optimizer/scheduler/trainer_state/8 rank RNG 的 checkpoint 才允许自动恢复。
+`monitor_training.py --job /data/.../grpo_ep3_luna_v4_20261006` 直接监控本机文件，无 SSH。
+可选256 Luna/Sol审查直接读取同目录生成文件，也不再 rsync 到远端。
 
-`generate_256.py`, `compare_256.py`, `report_comparison.py` implement the optional
-independent Luna/Sol severity comparison. They are not the training reward
-implementation and were paused when direct GRPO was requested. The old
-`runtime_controller.py`/minimum-retention calibration workflow is intentionally
-not the entry point of this severity-aware run.
-
-See the central runbook for installation, source layout, health checks, commands,
-checkpoint recovery and evaluation denominators. Completed training must still
-be judged using held-out outputs; a rising training reward alone is insufficient.
+结果缓存、运行 receipts、模型/媒体和真实原文/输出均留在外部；revision隔离旧v3缓存。
+训练 reward 与 Luna 自审仅是探索性指标，不能替代完整101独立审查。

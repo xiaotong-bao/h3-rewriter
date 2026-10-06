@@ -33,7 +33,6 @@ def pair(row):
 if __name__=='__main__':
  (ROOT/'comparison_results').mkdir(exist_ok=True)
  while True:
-  subprocess.run(['rsync','-az','--include=ep3_samples_rank*.jsonl','--exclude=*','hyperbolic-pika-node-0010:/data/xiaotong/h3_rewriter_sft_20261002/grpo_ep3_luna_v2_20261006/',str(ROOT)+'/'],check=True)
   rows=[json.loads(s) for p in ROOT.glob('ep3_samples_rank*.jsonl') for s in p.read_text().splitlines() if s.strip()]
   with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:results=list(pool.map(pair,rows))
   valid=[r for r in results if not r['luna'].get('judge_failed') and not r['sol'].get('judge_failed')]

@@ -6,7 +6,9 @@ from peft import LoraConfig,get_peft_model
 from transformers import AutoProcessor,Qwen3_5ForConditionalGeneration,TrainerCallback
 from trl import GRPOConfig,GRPOTrainer
 
-ROOT=pathlib.Path('/work/grpo_ep3_luna_v2_20261006')
+from run_config import JOB as ROOT, PORT, JUDGE_REVISION
+from reward_policy import validate_and_score, positive_eligible, gate_advantage
+_LATEST_RECORDS=[]
 def clean_nulls(value):
     # Arrow unifies image/text block structs and introduces null keys. Qwen's
     # template checks key presence, so null image keys must be removed.
@@ -17,14 +19,18 @@ def clean_batch(batch):return clean_nulls(batch)
 def call(payload):
     with (ROOT/f'candidate_requests.rank{os.environ.get("RANK","0")}.jsonl').open('a') as f:
         f.write(json.dumps(payload,ensure_ascii=False)+'\n')
-    port=int(os.environ.get("H3_LUNA_PORT","8792"))
+    port=PORT
     req=urllib.request.Request(f'http://127.0.0.1:{port}/score',json.dumps(payload).encode(),{'Content-Type':'application/json'})
     errors=[]
     for attempt in range(3):
         try:
             with urllib.request.urlopen(req,timeout=1800) as response:
                 result=json.load(response)
-            assert isinstance(result.get('reward'),(int,float)) and math.isfinite(result['reward'])
+            assert result.get('judge_revision')==JUDGE_REVISION and result.get('judge_model')=='gpt-6-luna' and result.get('reasoning_effort')=='high'
+            reported=result['reward']
+            assert isinstance(reported,(int,float)) and not isinstance(reported,bool) and math.isfinite(reported)
+            validate_and_score(payload['original'],payload['rewrite'],result['requirements'],result)
+            assert math.isclose(reported,result['reward'],abs_tol=1e-8),'Inconsistent reward'
             return result
         except Exception as error:
             detail=error.read().decode(errors='replace') if isinstance(error,urllib.error.HTTPError) else repr(error)
@@ -32,16 +38,18 @@ def call(payload):
             with (ROOT/f'judge_failures.rank{os.environ.get("RANK","0")}.jsonl').open('a') as log:
                 log.write(json.dumps({'time':time.time(),'attempt':attempt+1,'error':detail,'payload':payload},ensure_ascii=False)+'\n')
             if attempt<2:time.sleep(5*(attempt+1))
-    # This is an operational penalty, never a fabricated semantic verdict.
-    return {'reward':-1.,'retention':None,'items':[], 'judge_failed':True,
-            'failure_penalty':-1.,'attempts':3,'errors':errors}
+    # None is unscorable in the pinned TRL, not a fake semantic penalty.
+    return {'reward':None,'retention':None,'items':[], 'judge_failed':True,
+            'attempts':3,'errors':errors,'judge_revision':JUDGE_REVISION}
 def completion_text(value):
     if isinstance(value,str):return value
     content=value[-1]['content']
     if isinstance(content,str):return content
     return ''.join(x.get('text','') for x in content)
-def retention_reward(completions,original,context,task,trainer_state,**kwargs):
+def retention_reward(completions,original,context,task,trainer_state,completion_ids,**kwargs):
+    global _LATEST_RECORDS
     rewards=[]
+    _LATEST_RECORDS=[]
     texts=[completion_text(value) for value in completions]
     payloads=[{'original':source,'context':ctx,'rewrite':text} for text,source,ctx in zip(texts,original,context,strict=True)]
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
@@ -54,12 +62,41 @@ def retention_reward(completions,original,context,task,trainer_state,**kwargs):
         duration=float(re.search(r'duration:\s*([0-9.]+)s',ctx)[1])
         checks=check_format(text,t,duration)
         valid=all(checks.values())
-        reward=result['reward'] if valid else result['reward']-.3
+        failed=result.get('judge_failed',False)
+        reward=None if failed else result['reward'] if valid else result['reward']-.3
+        eligible=positive_eligible(result,valid)
+        index=len(rewards)
+        _LATEST_RECORDS.append({'eligible':eligible,'judge_failed':failed,'token_ids':completion_ids[index],
+            'original':source,'reward':reward,'format_valid':valid})
         rewards.append(reward)
         with (ROOT/f'rollouts.rank{os.environ.get("RANK","0")}.jsonl').open('a') as f:
             f.write(json.dumps({'step':trainer_state.global_step,'original':source,'rewrite':text,
-                'reward':reward,'format_valid':valid,'format_checks':checks,'verdict':result},ensure_ascii=False)+'\n')
+                'reward':reward,'format_valid':valid,'format_checks':checks,'verdict':result,
+                'positive_eligible':eligible,'judge_failed':failed},ensure_ascii=False)+'\n')
     return rewards
+
+class QualityGatedGRPOTrainer(GRPOTrainer):
+    """Keep GRPO advantages, but never positively reinforce hard violations."""
+    def _generate_and_score_completions(self, inputs):
+        output=super()._generate_and_score_completions(inputs)
+        assert len(_LATEST_RECORDS)==len(output['advantages']), 'Reward/gate batch mismatch'
+        before=output['advantages'].detach().cpu().tolist()
+        after=[]
+        for i,(record,value) in enumerate(zip(_LATEST_RECORDS,before,strict=True)):
+            tokens=record['token_ids']
+            assert output['completion_ids'][i,:len(tokens)].detach().cpu().tolist()==tokens, 'Reward/gate token alignment mismatch'
+            after.append(gate_advantage(value,record['eligible'],record['judge_failed']))
+            if record['judge_failed']:
+                # Exclude even the KL gradient for a failed operational judgment.
+                output['completion_mask'][i].zero_()
+            with (ROOT/f'advantages.rank{os.environ.get("RANK","0")}.jsonl').open('a') as f:
+                f.write(json.dumps({'step':self.state.global_step,'original':record['original'],
+                    'raw_advantage':value,'gated_advantage':after[-1],'reward':record['reward'],
+                    'positive_eligible':record['eligible'],'judge_failed':record['judge_failed'],
+                    'format_valid':record['format_valid']},ensure_ascii=False)+'\n')
+        output['advantages']=torch.tensor(after,device=output['advantages'].device,dtype=output['advantages'].dtype)
+        assert all(v<=0 or r['eligible'] for v,r in zip(after,_LATEST_RECORDS,strict=True))
+        return output
 
 class Status(TrainerCallback):
     def on_log(self,args,state,control,logs=None,**kwargs):
@@ -70,7 +107,7 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--smoke',action='store_true');parser.add_argument('--steps',type=int,default=64);parser.add_argument('--resume',type=str)
     a=parser.parse_args();torch.manual_seed(42)
     authorization=json.loads((ROOT/'direct_grpo_authorization.json').read_text())
-    assert authorization['approved'] and authorization['judge_revision']=='ep3-v2-luna-severity-v3'
+    assert authorization['approved'] and authorization['judge_revision']==JUDGE_REVISION
     assert (ROOT/'MERGE_READY').is_file()
     rows=[json.loads(x) for x in (ROOT/'pilot_inputs.jsonl').read_text().splitlines()]
     if a.smoke:
@@ -108,7 +145,7 @@ def main():
         logging_steps=1,save_steps=16,save_total_limit=None,report_to='none',
         warmup_steps=2,seed=42,data_seed=42,chat_template_kwargs={'enable_thinking':False},
         generation_kwargs={'use_cache':True,'eos_token_id':processor.tokenizer.eos_token_id,'pad_token_id':processor.tokenizer.pad_token_id},log_completions=False,log_multimodal=False)
-    trainer=GRPOTrainer(model=model,args=args,processing_class=processor,
+    trainer=QualityGatedGRPOTrainer(model=model,args=args,processing_class=processor,
         train_dataset=dataset,reward_funcs=retention_reward,callbacks=[Status()])
     trainer.train(resume_from_checkpoint=a.resume);trainer.save_model(str(output/'final_adapter'))
     if trainer.is_world_process_zero():

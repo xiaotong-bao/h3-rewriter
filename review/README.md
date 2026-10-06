@@ -5,7 +5,7 @@
 
 ```bash
 python review/check_format.py --input results.jsonl --sources source_metadata.jsonl --output format_audit.json
-python review/retry_failed_audits.py --root /data/xiaotong/h3_rewriter_sft_20261002 --port 8792
+python review/retry_failed_audits.py --root /data/xiaotong/h3_rewriter_sft_20261002 --job grpo_ep3_luna_v4_20261006 --port 8793
 ```
 
 后一命令需要结果目录写权限和已就绪的本机 Luna gateway；不会重采样模型输出。

@@ -1,9 +1,10 @@
 import collections,hashlib,json,pathlib,random,re
+from run_config import JOB
 import torch
 from peft import PeftModel
 from transformers import AutoProcessor,Qwen3_5ForConditionalGeneration
 
-ROOT=pathlib.Path('/work');JOB=ROOT/'grpo_ep3_luna_v2_20261006'
+ROOT=pathlib.Path('/work')
 SFT=ROOT/'trl_sft_official_v2_20261006';BASE=ROOT/'models/Qwen3.5-9B'
 JOB.mkdir(exist_ok=True)
 def read(path):return [json.loads(s) for s in path.read_text().splitlines()]

@@ -7,7 +7,8 @@ from transformers import AutoProcessor,Qwen3_5ForConditionalGeneration
 from train_grpo import call
 from format_rules import check_format
 
-ROOT=pathlib.Path('/work/grpo_ep3_luna_v2_20261006');SFT=pathlib.Path('/work/trl_sft_official_v2_20261006')
+from run_config import JOB as ROOT, PORT, JUDGE_REVISION
+SFT=pathlib.Path('/work/trl_sft_official_v2_20261006')
 rank=int(os.environ.get('RANK',0));world=int(os.environ.get('WORLD_SIZE',1));local=int(os.environ.get('LOCAL_RANK',0))
 torch.cuda.set_device(local)
 if world>1:dist.init_process_group('nccl')

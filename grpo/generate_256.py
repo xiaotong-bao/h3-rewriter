@@ -1,7 +1,8 @@
 import json,os,pathlib,torch
 from transformers import AutoProcessor,Qwen3_5ForConditionalGeneration
 from peft import PeftModel
-ROOT=pathlib.Path('/work/grpo_ep3_luna_v2_20261006');rank=int(os.environ['LOCAL_RANK'])
+from run_config import JOB as ROOT
+rank=int(os.environ['LOCAL_RANK'])
 torch.cuda.set_device(rank)
 p=AutoProcessor.from_pretrained('/work/models/Qwen3.5-9B');p.image_processor.size={'shortest_edge':3136,'longest_edge':200704}
 m=Qwen3_5ForConditionalGeneration.from_pretrained('/work/models/Qwen3.5-9B',dtype=torch.bfloat16,attn_implementation='sdpa').cuda()

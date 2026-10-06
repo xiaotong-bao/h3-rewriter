@@ -1,8 +1,7 @@
 """Supervise only this job's local Linux gateway; never manage SSH sessions."""
 import fcntl,json,os,pathlib,signal,subprocess,sys,time,urllib.request
 ROOT=pathlib.Path(__file__).resolve().parent
-PORT=int(os.environ.get('H3_LUNA_PORT','8792'))
-REVISION='ep3-v2-luna-severity-v3'
+from run_config import PORT, JUDGE_REVISION as REVISION
 def event(kind,**details):
  with (ROOT/'watchdog_events.jsonl').open('a') as log:log.write(json.dumps({'time':time.time(),'event':kind,**details})+'\n')
 def health():

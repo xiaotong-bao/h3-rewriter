@@ -1,6 +1,6 @@
 # H3 rewriter：统一评价、TRL SFT 与 GRPO runbook
 
-更新：2026-10-06。适用于 HB10 的 Qwen3.5-9B、retention v2 system、官方 Qwen 模板，以及原始 101 条 t2va/i2va 测试集。代码位于 [仓库根目录](../../)。数据制作、官方 Context-IR 标签验证及历史五组比较见 [数据 runbook](h3_prompt_rewriter_data_runbook.md)。
+更新：2026-10-06。**当前执行入口为 §13 的 v4 本机重跑；§7–8 保留旧 v3 实验协议与迁移记录。**适用于 HB10 的 Qwen3.5-9B、retention v2 system、官方 Qwen 模板，以及原始 101 条 t2va/i2va 测试集。代码位于 [仓库根目录](../../)。数据制作、官方 Context-IR 标签验证及历史五组比较见 [数据 runbook](h3_prompt_rewriter_data_runbook.md)。
 
 ## 1. 评价对象与独立指标
 
@@ -319,3 +319,41 @@ docker run -d --name xiaotong-trl-sft-fresh --gpus all --network none --shm-size
 ## 12. 本次 GRPO 运行状态（2026-10-06）
 
 `pilot/status.json` 确认 64/64 step、epoch 0.5、train_runtime 6307.8448 秒；训练已完成，pipeline 进入 `evaluation_101`。101 独立评测尚在运行，不填写完整严重错误率或宣称改善。本机 gateway 健康且已成功返回评测评分。allowlist 修复前的失败配对须使用 §8 的独立重审工具恢复，保留初始结果；只有全部有效审查后才按 §9 更新 GRPO 对比表。
+
+## 13. v4 修复与全本机重跑
+
+新 JOB：`/data/xiaotong/h3_rewriter_sft_20261002/grpo_ep3_luna_v4_20261006`，容器 `/work/grpo_ep3_luna_v4_20261006`。旧 v3 JOB 及其原始评价保留，不覆盖、不从旧 GRPO adapter 续训。本次共享同一冻结 merged EP3 初始化；EP3 adapter SHA 与官方 template SHA 已核验，`rerun_receipt.json` 记录父实验及固定配置。
+
+旧 1024 候选审计发现：42 个格式失败候选获得正优势；step36 有15次最终judge失败被赋操作性负分；30个音乐flag缺v2项，其中12个空问题清单得满分。旧完整101 recovered Luna结果为 matched merged severe 6→11、格式2→4；原6→9摘要只有93个有效配对。独立审查的10→13属于另一个判定版本，应分别报告。
+
+v4 revision：`ep3-v2-luna-checklist-v4`，Luna high，CLI最多16并发；本机runtime在 `/home/xiaotong/grpo_ep3_luna_v4_20261006/local_luna_runtime`，端口8793。全程无需Mac或SSH。缓存与旧v3隔离。
+
+1. 原文拆为缓存的完整要求清单；source sentences全覆盖，每个requirement恰好判定一次，结合全篇和结尾检查；关键要求的明确错误不得降级。
+2. flags与音乐/台词问题清单严格一致；通过covered_requirement_id去重，不双扣。格式仍按raw13项检查，不修复输出后算通过。
+3. judge最终失败返回None，固定TRL将其排除出组内均值/方差；完成mask同时置零以排除包括KL在内的梯度。不得写成语义错误。
+4. 在TRL实际优势上增加正优势门禁：格式失败、severe、音乐/台词违规及critical待复核不得有正优势；既有负优势保留。门禁有逐候选token对齐断言；`advantages.rank*.jsonl`记录原始与实际优势。**这是显式改动的GRPO更新规则。**
+5. 强制真实本机Luna合成校准通过，再运行2step smoke。smoke权重不用作pilot初始化；pilot重新从EP3开始64step，然后同协议greedy101评价。
+
+已通过固定Torch/TRL环境14项回归测试和真实Luna14/14合成校准；校准只使用5个合成原文，不使用101的输出或独立审查标签。模板、256训练数据、媒体顺序、LR5e-6、beta.02、采样配置、LoRA和64step保持原设置。修复不能预先保证严重错误下降，须等待完整独立评价。
+
+```bash
+TASK_ROOT=/data/xiaotong/h3_rewriter_sft_20261002
+REWRITER_SRC=/path/to/h3-rewriter
+JOB_NAME=grpo_ep3_luna_v4_20261006
+# 新JOB先具备pilot_inputs、system、冻结EP3初始化和MERGE_READY，见prepare_merge.py。
+python3 "$REWRITER_SRC/bootstrap_runtime.py" grpo --root "$TASK_ROOT" --job "$JOB_NAME" --include-calibration-sources
+# 本机runtime复制luna_base/luna_judge/evidence/reward_policy/run_config/
+# start_luna_runtime/runtime_watchdog/calibrate_judge/format_rules及当前两份Luna receipts。
+# 上述bootstrap显式追加5个合成原文hash；两份Luna receipts复制到runtime。
+cd /home/xiaotong/grpo_ep3_luna_v4_20261006/local_luna_runtime
+H3_LUNA_PORT=8793 python3 start_luna_runtime.py
+python3 calibrate_judge.py --output "$TASK_ROOT/$JOB_NAME/calibration_receipt.json"
+# 先确认GPU空闲，再启动；每次只允许一个本任务pipeline。
+docker run -d --name xiaotong-grpo-ep3-luna-v4-20261006 --gpus all --network host --shm-size=16g \
+  -v "$TASK_ROOT:/work" -e HF_HUB_OFFLINE=1 -e OMP_NUM_THREADS=1 \
+  -e H3_GRPO_JOB="$JOB_NAME" -e H3_LUNA_PORT=8793 \
+  -e PYTHONPATH=/work/$JOB_NAME:/work/trl_sft_official_v2_20261006/vendor:/work/trl_sft_official_v2_20261006 \
+  h3-rewriter-grpo:20261005 /work/grpo_20261005/env/bin/python -u /work/$JOB_NAME/run_pipeline.py
+```
+
+监控新JOB的`pipeline_status.json`、`smoke.log`、`pilot/status.json`、`pilot.log`、`rollouts.rank*.jsonl`和`advantages.rank*.jsonl`，以及本机runtime的watchdog状态。完成101后只对judge失败重审，保留原始rewrites；重审工具需显式`--job grpo_ep3_luna_v4_20261006 --port 8793`。不得把v4训练reward与旧v3数值当作同一评价器的可比指标，也不得拿训练采样输出替代greedy101。
