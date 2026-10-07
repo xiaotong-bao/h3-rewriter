@@ -45,3 +45,7 @@
 ## 正式运行恢复检查
 
 正式容器 `xiaotong-9bv2-full-userlike-grpo-20261008` 已启动。8个rank均通过严格恢复检查，逐rank RNG校验结果见 `pilot/rng_restore.rank0.json` 至 `rank7.json`。完整启动参数、容器ID和代码SHA记录在 `formal_training_launch_receipt.json`，运行代码快照在 `formal_training_code/`。
+
+## 首次正式运行故障与恢复
+
+初次正式运行完成501和502后，在503的logps前向因Qwen `mm_token_type_ids` 比实际input_ids短42–43token而退出。已在 `video_grpo.py` 每次评分前从实际input_ids重建类型数组，保留image/video标识；新增长度不一致回归测试通过。TRL相近问题：https://github.com/huggingface/trl/issues/5785 。初次输出保留 `pilot_failed_r0/`，完整日志 `formal_training_failed_r0.log`。重试容器 `xiaotong-9bv2-full-userlike-grpo-20261008-r1`，从完整原500严格恢复；501/502尚无完整checkpoint，因此重跑。启动命令记录 `formal_training_retry_r1.json`。

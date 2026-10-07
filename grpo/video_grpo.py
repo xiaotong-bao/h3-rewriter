@@ -56,11 +56,12 @@ def video_trainer_class(parent):
             if video:
                 for k,v in video.items():kwargs[k]=v.to(input_ids.device) if isinstance(v,torch.Tensor) else v
                 assert len(kwargs['num_videos'])==len(input_ids)
-                if kwargs.get('mm_token_type_ids') is None:
-                    kinds=torch.zeros_like(input_ids)
-                    kinds[input_ids==self._tokenizer.convert_tokens_to_ids('<|image_pad|>')]=1
-                    kinds[input_ids==self._tokenizer.convert_tokens_to_ids('<|video_pad|>')]=2
-                    kwargs['mm_token_type_ids']=kinds
+            # TRL's second processor pass may use a different video/text length.
+            # Derive Qwen modality IDs from the actual sequence being scored.
+            kinds=torch.zeros_like(input_ids)
+            kinds[input_ids==self._tokenizer.convert_tokens_to_ids('<|image_pad|>')]=1
+            kinds[input_ids==self._tokenizer.convert_tokens_to_ids('<|video_pad|>')]=2
+            kwargs['mm_token_type_ids']=kinds
             return super()._get_per_token_logps_and_entropies(model,input_ids,*args,**kwargs)
         def _generate_and_score_completions(self,inputs):
             output=super()._generate_and_score_completions(inputs)
