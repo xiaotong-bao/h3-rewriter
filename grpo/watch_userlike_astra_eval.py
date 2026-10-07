@@ -12,8 +12,9 @@ import threading
 import concurrent.futures
 
 ROOT = Path('/data/xiaotong/h3_rewriter_sft_20261002')
-JOB = ROOT / 'grpo_9bv2_userlike_1k_20261007'
-OUT = JOB / 'astra_eval_every32'
+JOB = ROOT / os.environ.get('H3_GRPO_JOB', 'grpo_9bv2_userlike_1k_20261007')
+INTERVAL = int(os.environ.get('H3_EVAL_INTERVAL', '32'))
+OUT = JOB / f'astra_eval_every{INTERVAL}'
 REPO = Path('/home/xiaotong/h3-rewriter')
 
 
@@ -71,7 +72,8 @@ def write_json(path, data):
 def evaluate(step, checkpoint):
     output = OUT / f'step-{step:04d}'
     output.mkdir(exist_ok=True)
-    container = f'xiaotong-9bv2-astra-eval-step{step}-20261007'
+    container = (f'xiaotong-9bv2-full-astra-step{step}-20261008' if INTERVAL == 100 else
+                 f'xiaotong-9bv2-astra-eval-step{step}-20261007')
     generated = output / 'generation'
     if not (generated / 'COMPLETE').exists():
         inspect = subprocess.run(['docker', 'inspect', '--format', '{{.State.Status}}', container], capture_output=True, text=True)
@@ -121,7 +123,7 @@ def evaluate(step, checkpoint):
 def rebuild_report():
     results = []
     baseline = Path('/home/xiaotong/9bv2_grpo_amp_ablation_20261007/summary.json')
-    if baseline.exists():
+    if INTERVAL == 32 and baseline.exists():
         summary = json.loads(baseline.read_text())
         assert not summary['failures'] and all(s['valid'] == s['expected'] == 101 for s in summary['models'].values())
         results.append(dict(step=0, **summary))
@@ -146,7 +148,7 @@ def main():
         for checkpoint in (JOB / 'pilot').glob('checkpoint-*'):
             step = int(checkpoint.name.split('-')[1])
             marker = checkpoint / 'trainer_state.json'
-            if step % 32 == 0 and marker.exists() and time.time() - marker.stat().st_mtime > 60:
+            if step % INTERVAL == 0 and marker.exists() and time.time() - marker.stat().st_mtime > 60:
                 pending.append((step, checkpoint))
         if (JOB / 'pilot/COMPLETE').exists():
             pending.append((int((JOB / 'pilot/COMPLETE').read_text()), JOB / 'pilot/final_adapter'))

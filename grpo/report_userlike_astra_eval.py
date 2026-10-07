@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import time
 
-ROOT = Path('/data/xiaotong/h3_rewriter_sft_20261002/grpo_9bv2_userlike_1k_20261007/astra_eval_every32')
+ROOT = Path('/data/xiaotong/h3_rewriter_sft_20261002') / os.environ.get('H3_GRPO_JOB', 'grpo_9bv2_userlike_1k_20261007') / ('astra_eval_every' + os.environ.get('H3_EVAL_INTERVAL', '32'))
 
 
 def reports():

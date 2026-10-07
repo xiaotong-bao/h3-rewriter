@@ -8,10 +8,11 @@ import re
 import sys
 import threading
 import traceback
+import importlib.util
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'review'))
 import single_pass_compare as judge
-from single_pass_reward import REVISION, evidence_schema, score_record
+from single_pass_reward import REVISION, luna_evidence_schema, evidence_schema, score_record, LUNA_RULES_APPENDIX, format_for_task
 
 
 def main():
@@ -25,7 +26,12 @@ def main():
     output = args.job / 'single_pass_reward'
     output.mkdir(exist_ok=True)
     slots = threading.Semaphore(16)
-    judge.SCHEMA = evidence_schema(judge.SCHEMA)
+    judge.SCHEMA = luna_evidence_schema(judge.SCHEMA)
+    judge.RULES += LUNA_RULES_APPENDIX
+    spec = importlib.util.spec_from_file_location('critical_judge', judge.__file__)
+    critical = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(critical)
+    critical.SCHEMA = evidence_schema(critical.SCHEMA)
     locks = {}
     lock_guard = threading.Lock()
 
@@ -52,8 +58,19 @@ def main():
                     lock = locks.setdefault(key, threading.Lock())
                 with slots, lock:
                     result = judge.grade_retry(row, output, 'gpt-6-luna', 'high', REVISION)
+                    if not any(i['severity'] == 'severe' for i in result['issues']):
+                        checked = critical.grade_retry(row, output, 'gpt-6-astra', 'low', REVISION)
+                        result['critical_check'] = checked
+                        additions = [i for i in checked['issues'] if i['severity'] == 'severe']
+                        if additions:
+                            result['issues'] = result['issues'] + additions
+                            result['coverage'] += [i for i in checked['coverage'] if i['verdict'] == 'violated']
+                            result['maximum_severity'] = 'severe'
+                            result['content_score'] = 0
+                result['format_score'] = 100 if format_for_task(payload['rewrite'], row['task']) else 0
                 result.update(score_record(result))
                 result.update(judge_revision=REVISION, judge_model='gpt-6-luna', reasoning_effort='high')
+                result['critical_review_model'] = 'gpt-6-astra'
                 self.send_response(200)
                 body = json.dumps(result, ensure_ascii=False).encode()
             except Exception as error:

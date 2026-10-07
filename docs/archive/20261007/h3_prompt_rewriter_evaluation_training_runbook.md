@@ -464,3 +464,8 @@ aws --profile r2w \
 ## 当前 9B v2 userlike GRPO 实验
 
 数据、训练入口、Luna reward、每32步 Astra101、报告和 step224 S3备份见 [当前实验 runbook](h3_prompt_rewriter_9bv2_userlike_grpo_20261007.md)。
+
+
+## 全量 userlike 严格恢复 GRPO
+
+详见 [全量恢复 runbook](h3_prompt_rewriter_full_userlike_resume_20261008.md)。
