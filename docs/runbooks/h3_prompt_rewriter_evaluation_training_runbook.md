@@ -383,7 +383,7 @@ v4 在笑脸车窗 case 中漏判末句反转：雾蒸发后却仍遮住玻璃�
 
 本次明确选择四轮 TRL SFT（302/604/906/1208），以及 EP3 初始化的 v2、v4 GRPO 的 checkpoint-16/32/48/64 和 final_adapter，共 14 个目录。完整 checkpoint 包含 adapter、optimizer、scheduler、trainer_state 和八个 rank RNG；final_adapter 用于推理，不声明可恢复优化器训练。GRPO adapter 需要其对应的 merged EP3 初始化；本清单不包含 merged base，应按对应实验 prepare_merge 和模板 receipt 重建，不能直接把 GRPO adapter 加载到未经 EP3 合并的原始 Qwen。
 
-发布目标（仅目标；2026-10-07 凭据未配置，尚未完成本次上传）：
+已上传并核验（2026-10-07 01:53:19 UTC / 北京时间 09:53:19）：14 个目录、264 个文件、19,332,433,153 bytes（18.005 GiB）。每个文件均核验远端大小及 SHA256 metadata，上传回执已读回核对，`uploaded=true`、`ready=true`。
 
 ```text
 s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_20261002/
@@ -409,3 +409,30 @@ python3 publish_checkpoints.py \
 ```
 
 默认不上传。上传时逐文件核对远端大小及 SHA256 metadata，已存在且相同的对象复用，内容不同则拒绝覆盖。只有全部核验后才发布本次 receipt，并读回核对；以其 `uploaded=true`、`ready=true` 为准。本次独立 receipt 不替代 §10 覆盖数据与媒体的旧 READY.json。
+
+
+本次成功上传回执：
+
+```text
+s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_20261002/checkpoint_publications/h3_checkpoint_publication_20261007.json
+```
+
+常用权重地址（完整目录；EP3 / 历史 v2 GRPO / v4 GRPO 分别列出）：
+
+```text
+s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_20261002/trl_sft_official_v2_20261006/sft/run/checkpoint-906/
+s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_20261002/grpo_ep3_luna_v2_20261006/pilot/checkpoint-64/
+s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_20261002/grpo_ep3_luna_v4_20261006/pilot/checkpoint-64/
+```
+
+下载示例（恢复到新目录，使用 R2 endpoint）：
+
+```bash
+aws --profile r2w \
+  --endpoint-url https://f25b0ac4c45a2442f62961145a64d158.r2.cloudflarestorage.com \
+  s3 cp --recursive \
+  s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_20261002/trl_sft_official_v2_20261006/sft/run/checkpoint-906/ \
+  /data/xiaotong/h3_rewriter_restore/ep3/checkpoint-906/
+```
+
+下载后应按本次回执逐文件核对大小和 SHA256。本次未上传 merged base 或新 profile 训练产物，也不改变历史 GRPO 质量结论。
