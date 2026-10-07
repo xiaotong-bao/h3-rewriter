@@ -120,6 +120,11 @@ def evaluate(step, checkpoint):
 
 def rebuild_report():
     results = []
+    baseline = Path('/home/xiaotong/9bv2_grpo_amp_ablation_20261007/summary.json')
+    if baseline.exists():
+        summary = json.loads(baseline.read_text())
+        assert not summary['failures'] and all(s['valid'] == s['expected'] == 101 for s in summary['models'].values())
+        results.append(dict(step=0, **summary))
     for path in sorted(OUT.glob('step-*')):
         if (path / 'COMPLETE').exists():
             results.append(dict(step=int(path.name.split('-')[1]), **json.loads((path / 'summary.json').read_text())))

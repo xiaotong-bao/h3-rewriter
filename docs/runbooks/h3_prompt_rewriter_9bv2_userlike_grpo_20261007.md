@@ -66,3 +66,40 @@ s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft
 ```
 
 远端清单及大小匹配，主 LoRA 权重回读 SHA256 `f6c0356d9f991cc74000a893ad4c0586e68263dda086fbbda0bb387d156698b6`。上级目录含逐文件 SHA256 manifest 和 verification receipt。
+
+## Step 320：下载、inference 和 evaluation 复现
+
+本机权重：`/data/xiaotong/h3_rewriter_sft_20261002/grpo_9bv2_userlike_1k_20261007/pilot/checkpoint-320/`。
+
+完整 checkpoint S3 地址：
+
+```text
+s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_20261002/grpo_9bv2_userlike_1k_20261007/backups/step-320/checkpoint-320/
+```
+
+以下命令在 HB10 主机运行；复用现有 base、镜像、benchmark 输入和本机 Codex 登录。checkpoint 是 LoRA，不能作为独立完整9B模型加载；必须搭配 Qwen3.5-9B base。远程机器还需要准备这几个依赖及 benchmark 图片。
+
+下载到新的目录（本机原 checkpoint 已在，不必重复下载）：
+
+```bash
+aws --profile r2w   --endpoint-url https://f25b0ac4c45a2442f62961145a64d158.r2.cloudflarestorage.com   s3 cp   s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_20261002/grpo_9bv2_userlike_1k_20261007/backups/step-320/checkpoint-320/   /data/xiaotong/h3_rewriter_sft_20261002/restored_step320/   --recursive
+```
+
+复现 inference（8卡并行；使用新输出目录，避免混入旧结果）：
+
+```bash
+cd /home/xiaotong/h3-rewriter
+docker run --rm --gpus all --network none --shm-size=8g   -v /data/xiaotong/h3_rewriter_sft_20261002:/work   -v /home/xiaotong/h3-rewriter:/code:ro   -e HF_HUB_OFFLINE=1 -e OMP_NUM_THREADS=1   -e PYTHONPATH=/work/trl_sft_official_v2_20261006/vendor:/work/grpo_20261005/env/lib/python3.11/site-packages   h3-rewriter-grpo:20261005   /work/grpo_20261005/env/bin/python -u -m torch.distributed.run   --nproc_per_node=8 --master_port=29862   /code/grpo/ablate_9bv2_inputs.py   --checkpoint /work/grpo_9bv2_userlike_1k_20261007/pilot/checkpoint-320   --output /work/grpo_9bv2_userlike_1k_20261007/manual_step320/generation   --templates HF --merges unmerged --autocast --label-suffix GRPO_step320
+```
+
+Astra evaluation（主机运行，需要网络和 `codex` 登录）：
+
+```bash
+cd /home/xiaotong/h3-rewriter
+python3 grpo/prepare_eval_manifest.py   --results /data/xiaotong/h3_rewriter_sft_20261002/grpo_9bv2_userlike_1k_20261007/manual_step320/generation/results.jsonl   --output /data/xiaotong/h3_rewriter_sft_20261002/grpo_9bv2_userlike_1k_20261007/manual_step320/manifest.jsonl
+python3 review/single_pass_compare.py   --manifest /data/xiaotong/h3_rewriter_sft_20261002/grpo_9bv2_userlike_1k_20261007/manual_step320/manifest.jsonl   --output /data/xiaotong/h3_rewriter_sft_20261002/grpo_9bv2_userlike_1k_20261007/manual_step320   --model gpt-6-astra --effort low --workers 8
+```
+
+输出 `summary.json`（分数和失败数）、`audits.jsonl`（101条证据）、`COMPARISON.md`。只有 valid=expected=101 且 failures=[] 才是完整有效评测。生成固定 greedy；Astra 重新调用可能有评分波动。
+
+直接复用已有 step320 输出评测时，把上述 results 路径换成 `astra_eval_every32/step-0320/generation/results.jsonl`，无需重跑 inference。
