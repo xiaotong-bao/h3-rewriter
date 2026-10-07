@@ -140,3 +140,23 @@ Slack 进度：用户明确授权每 20 分钟向本人 Pika 私信发送实际�
 | EP5 | 81.19 | 100.00 | 13 | 20 | 68 |
 
 EP3 sampling 独立记录于 `runs/sft_retrain_20261006/ep3_sampling_101/`，只有 101 条全部有效才视为正式完成；不混入上述 greedy 结果。
+
+## 6. 旧 9B v2 权重 S3 路径（2026-10-07 核验）
+
+此处按用户“980 v2”指此前比较的旧 **9B v2 / retention v2** 记录：历史 LLaMA-Factory checkpoint-604、epoch 2，101 条 Astra low 内容分 87.43。不是 step980，也不是本次 TRL 重训 EP2 或 EP5。
+
+权重已在私有 R2 的 S3 兼容存储，无需重复上传；本次 head_object 核验 adapter、base 和 env 的远端大小及 SHA256 metadata 与 READY.json 一致。该核验没有重新下载全部对象计算 SHA。
+
+- LoRA adapter（692654080 bytes）：`s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_retention_v2_20261006/assets/adapter.tar`
+- 对应 Qwen3.5-9B 基础权重（19329361920 bytes）：`s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_retention_v2_20261006/assets/base.tar`
+- 校验记录：`s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_retention_v2_20261006/assets/READY.json`
+- 备份运行环境：同目录 `env.tar`。
+
+R2 endpoint：`https://f25b0ac4c45a2442f62961145a64d158.r2.cloudflarestorage.com`，AWS profile：`r2w`。adapter 为 LoRA 权重，加载时必须配合上述 base，不是独立完整模型。
+
+```bash
+aws s3 cp s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_retention_v2_20261006/assets/adapter.tar ./9bv2_adapter.tar \
+  --profile r2w --endpoint-url https://f25b0ac4c45a2442f62961145a64d158.r2.cloudflarestorage.com
+```
+
+SHA256：adapter `2f5d06342a7ef9bfcc8370dd86508ebf1ba9f85047ead9ad32d2ce8b7aba4940`；base `b062b422a48bc4346e96bf59f51ceddf2aa59bb9fd384ba6fb229fc801236e0b`。
