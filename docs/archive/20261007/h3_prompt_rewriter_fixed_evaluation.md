@@ -1,3 +1,5 @@
+> 历史快照：仅供追溯，不是当前操作入口。当前仅使用 [inference + eval](../../runbooks/inference_eval.md)、[SFT](../../runbooks/sft.md)、[GRPO](../../runbooks/grpo.md)。旧状态及评分协议不代表当前状态。
+
 # H3 prompt rewriter：固定评价规范
 
 2026-10-06。FAL/9B v2 各 30 条校准已完成并复核，规则冻结为 `retention-single-pass-v3-pilot`（ID 中 pilot 为校准阶段历史命名，正式全量评测沿用同一规则）。EP3 两组试评和全量推理等待可访问的 checkpoint-906，不声称四组已经完成。旧 runbook §1–15 保留历史实验口径，本规范是用户此次指定的新协议，不追溯修改旧 reward 或旧评分。
@@ -28,7 +30,7 @@ FAL/9B v2 使用已保存原始输出；EP3 两组重新推理。greedy：do_sam
 
 最终只提供分数比较，不做逐条胜平负。表格列：模型/解码、有效条数、平均内容分、平均格式分、严重问题 case 数、一般问题 case 数、无问题 case 数。后三列互斥，相加为有效条数；多错误 issue 数不能混当 case 数。每组另给 Top 5 具体问题：优先 severe、再 general，同级按 ID 和问题顺序确定，附样本 ID、原文证据、输出证据/遗漏说明和原因。问题不足 5 个时报告实际数量，不编造。每个 EP3 解码组分别给 Top 5。
 
-规范实现：[single_pass_compare.py](../../review/single_pass_compare.py)。保存原始输出、原文、SHA、完整逐项 coverage、证据、问题级别、judge 模型/effort、规则版本、失败记录、汇总分及 30 条复核记录。纯文本评审不验证未展示图片的视觉忠实度。
+规范实现：[single_pass_compare.py](../../../review/single_pass_compare.py)。保存原始输出、原文、SHA、完整逐项 coverage、证据、问题级别、judge 模型/effort、规则版本、失败记录、汇总分及 30 条复核记录。纯文本评审不验证未展示图片的视觉忠实度。
 
 ## 2. 日常 reward：GPT-6 Luna
 
@@ -121,9 +123,9 @@ Slack 进度：用户明确授权每 20 分钟向本人 Pika 私信发送实际�
 
 `review/epoch_reviews.py` 由 `h3-rewriter-epoch-review.service` 持续运行，每 30 秒检查各轮 benchmark 的 COMPLETE 和 101 个唯一 ID。逐条核对原文、冻结 manifest SHA；只有全部 101 条有效、无 judge 失败才写评审 COMPLETE。失败保留并重试，未完成不填写正式分数。不改变训练进程或 loss，不占用训练 GPU。每轮保存原始输出/证据、分数、严重/一般/无问题 case 数、Top 5。
 
-实时表：[各 epoch 与 FAL/9B v2 固定参考](../../runs/sft_retrain_20261006/epoch_reviews/EPOCH_COMPARISON.md)。每轮详细报告在 `runs/sft_retrain_20261006/epoch_reviews/epN/COMPARISON.md`，完整评审在 `audits.jsonl`。Slack 每 20 分钟通知同时报告各轮评审状态/得分，训练及五轮评审都完成后才停止。
+实时表：[各 epoch 与 FAL/9B v2 固定参考](/mnt/nfs/xiaotong/h3-rewriter/runs/sft_retrain_20261006/epoch_reviews/EPOCH_COMPARISON.md)。每轮详细报告在 `runs/sft_retrain_20261006/epoch_reviews/epN/COMPARISON.md`，完整评审在 `audits.jsonl`。Slack 每 20 分钟通知同时报告各轮评审状态/得分，训练及五轮评审都完成后才停止。
 
-首次逐轮结果：重训 EP1 / checkpoint-302 的 Astra low 101 条评审已完成，无 judge 失败。内容分 69.31，三字段格式分 96.04；严重 25、一般 20、无问题 56 个 case。完整证据和 Top 5 见 [EP1 报告](../../runs/sft_retrain_20261006/epoch_reviews/ep1/COMPARISON.md)。该记录为新重训的 EP1，不能与历史 HB10 EP1 或旧“明确问题”标签混同。后续轮次结果自动更新实时表。
+首次逐轮结果：重训 EP1 / checkpoint-302 的 Astra low 101 条评审已完成，无 judge 失败。内容分 69.31，三字段格式分 96.04；严重 25、一般 20、无问题 56 个 case。完整证据和 Top 5 见 [EP1 报告](/mnt/nfs/xiaotong/h3-rewriter/runs/sft_retrain_20261006/epoch_reviews/ep1/COMPARISON.md)。该记录为新重训的 EP1，不能与历史 HB10 EP1 或旧“明确问题”标签混同。后续轮次结果自动更新实时表。
 
 ### 2026-10-07：五轮标准评审完成
 

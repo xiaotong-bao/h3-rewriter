@@ -1,3 +1,5 @@
+> 历史快照：仅供追溯，不是当前操作入口。当前仅使用 [inference + eval](../../runbooks/inference_eval.md)、[SFT](../../runbooks/sft.md)、[GRPO](../../runbooks/grpo.md)。旧状态及评分协议不代表当前状态。
+
 # 内容无问题新版数据：普通 9B v2 方法 SFT
 
 用户明确停止19318条混合数据实验，改用5682条 Luna判定内容无问题的新版输入。忽略格式分：subject_definitions / detailed_description 等原 teacher 结构保留。选择条件为 maximum_severity=none 且 issues=[]；冻结快照有9608条已评审、51条失败未纳入。原数据、答案、媒体和训练/验证划分不改；验证集为原200个来源的新版输入，未经此次训练筛选。

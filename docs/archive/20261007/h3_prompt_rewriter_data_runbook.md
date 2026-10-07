@@ -1,3 +1,5 @@
+> 历史快照：仅供追溯，不是当前操作入口。当前仅使用 [inference + eval](../../runbooks/inference_eval.md)、[SFT](../../runbooks/sft.md)、[GRPO](../../runbooks/grpo.md)。旧状态及评分协议不代表当前状态。
+
 # H3 prompt-rewriter data runbook: a 10k (user request → H3 prompt) set labeled with H3-Context-IR
 
 ## 当前实际交付（2026-10-06）
@@ -391,6 +393,6 @@ See the five-group review artifacts, including all 14 official clear cases and 5
 
 The unified [evaluation and training runbook](h3_prompt_rewriter_evaluation_training_runbook.md) defines source-retention review, severe/general/review error levels, all 13 mechanical t2va/i2va format checks, semantic music/dialogue compliance, evidence requirements, denominators and matched inference controls. Mechanical structure passing is not full semantic compliance or H3 encoder acceptance.
 
-[Published TRL SFT and GRPO sources](../../.) contain the official-template fresh SFT collator/preflight/training/epoch evaluation, EP3 checkpoint-906 GRPO initialization, severity-aware concurrent GPT-6 Luna reward, local service supervision, checkpoint recovery and matched greedy 101-case evaluation. Training uses sampling; evaluation uses greedy. Dataset manifests, media, weights, credentials and runtime receipts stay external. The instructions preserve the actual HB10 directory layout and pinned Python environment.
+[Published TRL SFT and GRPO sources](../../../.) contain the official-template fresh SFT collator/preflight/training/epoch evaluation, EP3 checkpoint-906 GRPO initialization, severity-aware concurrent GPT-6 Luna reward, local service supervision, checkpoint recovery and matched greedy 101-case evaluation. Training uses sampling; evaluation uses greedy. Dataset manifests, media, weights, credentials and runtime receipts stay external. The instructions preserve the actual HB10 directory layout and pinned Python environment.
 
 The [four-epoch fresh TRL SFT review table](h3_prompt_rewriter_trl_sft_audit_20261006.md) uses its own same-template inference protocol. Its clear-error labels are historical direct Codex text reviews, not a retrospective severe/general reclassification, and are not interchangeable with the old LLaMA-Factory 18/101. The new EP3 GRPO result must be added only after its held-out review completes; no improvement is inferred from training reward alone.

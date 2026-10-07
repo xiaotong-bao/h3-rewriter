@@ -1,3 +1,5 @@
+> 历史快照：仅供追溯，不是当前操作入口。当前仅使用 [inference + eval](../../runbooks/inference_eval.md)、[SFT](../../runbooks/sft.md)、[GRPO](../../runbooks/grpo.md)。旧状态及评分协议不代表当前状态。
+
 # Astra low 101 评测：当前结果
 
 EP3 greedy 与 sampling 尚待可访问权重；当前仅 FAL/9B v2 完成。完整规则和推理状态见 [固定评价规范](h3_prompt_rewriter_fixed_evaluation.md)。

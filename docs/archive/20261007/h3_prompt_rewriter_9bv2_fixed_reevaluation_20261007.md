@@ -1,3 +1,5 @@
+> 历史快照：仅供追溯，不是当前操作入口。当前仅使用 [inference + eval](../../runbooks/inference_eval.md)、[SFT](../../runbooks/sft.md)、[GRPO](../../runbooks/grpo.md)。旧状态及评分协议不代表当前状态。
+
 # 旧 9B-v2 原始 101 输出重新评审（2026-10-07）
 
 使用用户提供的原始 rewrite 文件，101 个 ID 无重复，原文、任务、时长、比例与原 HB10 EP3 的 101 条一致。固定 Astra low / `retention-single-pass-v3-pilot`；不重采样、不清洗输出、不沿用原文件 audit 判级。纯文本评审不验证图片内容或生成视频质量。

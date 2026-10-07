@@ -1,3 +1,5 @@
+> 历史快照：仅供追溯，不是当前操作入口。当前仅使用 [inference + eval](../../runbooks/inference_eval.md)、[SFT](../../runbooks/sft.md)、[GRPO](../../runbooks/grpo.md)。旧状态及评分协议不代表当前状态。
+
 # H3 rewriter：统一评价、TRL SFT 与 GRPO runbook
 
 此次用户指定的新评价规则见 [固定评价规范](h3_prompt_rewriter_fixed_evaluation.md)：Astra low 101 条模型评测与 Luna 日常 reward。FAL/9B v2 的 30 条校准已复核并冻结规则，新重训 EP1–EP5 已完成标准评审；以下各节保留历史协议，不应把旧状态审查、待复核或未要求配乐扣分混入新评测。
@@ -45,7 +47,7 @@
 
 ## 3. 机械格式：t2va / i2va
 
-权威实现：[format_rules.py](../.././grpo/format_rules.py)。对 raw rewrite 检查全部 13 项；全部为 true 才算机械结构通过：
+权威实现：[format_rules.py](../../../grpo/format_rules.py)。对 raw rewrite 检查全部 13 项；全部为 true 才算机械结构通过：
 
 1. `integrated_multimodal_description`、`overall_soundscape`、`non_diegetic_music` 三字段齐全。
 2. 每个字段只出现一次。

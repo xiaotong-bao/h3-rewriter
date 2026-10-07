@@ -1,3 +1,5 @@
+> 历史快照：仅供追溯，不是当前操作入口。当前仅使用 [inference + eval](../../runbooks/inference_eval.md)、[SFT](../../runbooks/sft.md)、[GRPO](../../runbooks/grpo.md)。旧状态及评分协议不代表当前状态。
+
 # 原 HB10 EP3 与 GRPO：新版固定标准评测（2026-10-07）
 
 本报告对应原 HB10 checkpoint-906（历史 LR 1e-4 / 4 epoch），不是新 H100 LR 5e-5 / 5 epoch 重训的 EP3。使用此前首次保存的 101 条 greedy 输出，不重新采样，不清洗 rewrite；四组原文和输入条件核对一致。两次 GRPO 的合并初始化输出完全一致，合并控制只列一组。

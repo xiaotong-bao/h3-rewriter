@@ -1,3 +1,5 @@
+> 历史快照：仅供追溯，不是当前操作入口。当前仅使用 [inference + eval](../../runbooks/inference_eval.md)、[SFT](../../runbooks/sft.md)、[GRPO](../../runbooks/grpo.md)。旧状态及评分协议不代表当前状态。
+
 # 四轮 SFT 审计汇总
 
 每轮均为相同的 101 条输入；v2 system prompt、官方 Qwen3.5 模板、相同推理参数。Codex 模型逐条文本审查，不是人工标注。

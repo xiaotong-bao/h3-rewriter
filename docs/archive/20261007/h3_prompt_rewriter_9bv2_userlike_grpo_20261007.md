@@ -1,3 +1,5 @@
+> 历史快照：仅供追溯，不是当前操作入口。当前仅使用 [inference + eval](../../runbooks/inference_eval.md)、[SFT](../../runbooks/sft.md)、[GRPO](../../runbooks/grpo.md)。旧状态及评分协议不代表当前状态。
+
 # 9B v2 userlike GRPO：当前训练和评测
 
 训练根目录：`/data/xiaotong/h3_rewriter_sft_20261002/grpo_9bv2_userlike_1k_20261007/`。
