@@ -1,0 +1,4 @@
+FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg build-essential \
+    && rm -rf /var/lib/apt/lists/*
+ENV PYTHONPATH=/work/trl_sft_official_v2_20261006/vendor:/work/trl_sft_official_v2_20261006

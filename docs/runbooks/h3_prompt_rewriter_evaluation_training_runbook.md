@@ -1,5 +1,7 @@
 # H3 rewriter：统一评价、TRL SFT 与 GRPO runbook
 
+此次用户指定的新评价规则见 [固定评价规范](h3_prompt_rewriter_fixed_evaluation.md)：Astra low 101 条模型评测与 Luna 日常 reward。FAL/9B v2 的 30 条校准已复核并冻结规则，新重训 EP1–EP5 已完成标准评审；以下各节保留历史协议，不应把旧状态审查、待复核或未要求配乐扣分混入新评测。
+
 更新：2026-10-06。**v4 已完成训练；新版 reward 见 §14，统一 FAL/EP3/GRPO 审查见 §15；§7–8 保留旧 v3 实验协议与迁移记录。**适用于 HB10 的 Qwen3.5-9B、retention v2 system、官方 Qwen 模板，以及原始 101 条 t2va/i2va 测试集。代码位于 [仓库根目录](../../)。数据制作、官方 Context-IR 标签验证及历史五组比较见 [数据 runbook](h3_prompt_rewriter_data_runbook.md)。
 
 ## 1. 评价对象与独立指标

@@ -31,3 +31,4 @@ processed_cache/
 media/
 models/
 checkpoint-*/
+runs/

@@ -1,4 +1,5 @@
 """Durable HB10 job: validate all data, smoke backward, then fresh 4-epoch SFT."""
+import argparse
 import hashlib
 import json
 import os
@@ -32,6 +33,10 @@ def distributed(workers, script, extra=None):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epochs', type=int, default=4)
+    parser.add_argument('--learning-rate', type=float, default=1e-4)
+    a = parser.parse_args()
     assert not (JOB / 'run').exists(), 'Never overwrite a previous training'
     template_sha = hashlib.sha256((BASE / 'chat_template.jinja').read_bytes()).hexdigest()
     # Fetch is done by the host before the network-isolated container starts.
@@ -41,7 +46,7 @@ def main():
     (JOB / 'environment.freeze.txt').write_text(freeze)
     run('runtime_validation', [PYTHON, str(JOB / 'validate_runtime.py')])
     assert json.loads((JOB / 'runtime_validation.json').read_text())['passed']
-    run('smoke', distributed(8, 'train.py', ['--smoke']))
+    run('smoke', distributed(8, 'train.py', ['--smoke', '--learning-rate', str(a.learning_rate)]))
     assert (JOB / 'smoke/COMPLETE').is_file()
     run('preflight_all', distributed(24, 'preflight.py'))
     rows = [json.loads(line) for rank in range(24)
@@ -56,7 +61,7 @@ def main():
         'independent_prompt_checks': sum(row['independent_prompt_check'] for row in rows),
         'truncated_rows': 0, 'checked_prompt_and_target_masks': len(rows)}
     (JOB / 'preflight_report.json').write_text(json.dumps(report, indent=2))
-    run('training', distributed(8, 'train.py', ['--epochs', '4']))
+    run('training', distributed(8, 'train.py', ['--epochs', str(a.epochs), '--learning-rate', str(a.learning_rate)]))
     assert (JOB / 'run/COMPLETE').is_file()
     state('complete')
 

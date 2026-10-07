@@ -49,6 +49,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--smoke', action='store_true')
     parser.add_argument('--epochs', type=int, default=4)
+    parser.add_argument('--learning-rate', type=float, default=1e-4)
     parser.add_argument('--resume')
     a = parser.parse_args()
     torch.set_num_threads(1)
@@ -83,7 +84,7 @@ def main():
     assert all('language_model' in name for name, param in model.named_parameters() if param.requires_grad)
     output = JOB / ('smoke' if a.smoke else 'run')
     args = SFTConfig(output_dir=str(output), num_train_epochs=a.epochs,
-        max_steps=3 if a.smoke else -1, learning_rate=1e-4,
+        max_steps=3 if a.smoke else -1, learning_rate=a.learning_rate,
         per_device_train_batch_size=1, per_device_eval_batch_size=1,
         gradient_accumulation_steps=1 if a.smoke else 4,
         lr_scheduler_type='cosine', warmup_steps=0 if a.smoke else 18,
