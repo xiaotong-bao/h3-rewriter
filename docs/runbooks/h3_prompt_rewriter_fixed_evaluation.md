@@ -160,3 +160,8 @@ aws s3 cp s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_re
 ```
 
 SHA256：adapter `2f5d06342a7ef9bfcc8370dd86508ebf1ba9f85047ead9ad32d2ce8b7aba4940`；base `b062b422a48bc4346e96bf59f51ceddf2aa59bb9fd384ba6fb229fc801236e0b`。
+
+
+## 7. 原 HB10 checkpoint 重新可访问后的新版评测（2026-10-07）
+
+原 HB10 EP3 checkpoint-906 与 GRPO checkpoint 已在原主机找回并上传；§3 的“EP3 阻塞”描述属于当时另一台机器的历史状态。原 HB10 EP3 和 GRPO v2/v4 已按本文同一冻结协议完成独立 101 评审，四组均 101/101、失败 0。详细结果见 [原 HB10 EP3 / GRPO 报告](h3_prompt_rewriter_hb10_ep3_grpo_fixed_evaluation_20261007.md)：原 EP3 80.59、matched merged 控制 81.68、GRPO v2 81.68、GRPO v4 78.61；三字段格式分均 100。这里的原 EP3 与 §5 新 H100 重训 EP3（75.05）是不同权重，禁止合并或替换记录。

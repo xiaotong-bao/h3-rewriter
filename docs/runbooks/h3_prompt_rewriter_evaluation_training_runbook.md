@@ -438,3 +438,17 @@ aws --profile r2w \
 ```
 
 下载后应按本次回执逐文件核对大小和 SHA256。本次未上传 merged base 或新 profile 训练产物，也不改变历史 GRPO 质量结论。
+
+
+## 17. 原 HB10 EP3 / GRPO 新标准评测完成（2026-10-07）
+
+按用户指定的固定新版协议 `retention-single-pass-v3-pilot`，使用 Astra low 单轮、允许新增配乐、无独立状态审查，对原 HB10 EP3、matched merged 初始化、GRPO v2/v4 step64 各 101 条原始 greedy 输出重新评分。四组全部有效，最终调用失败 0；不混入 H100 新重训的同名 EP3。
+
+| 模型 | 内容分 | 三字段格式分 | 严重 case | 一般 case | 无问题 case |
+|---|---:|---:|---:|---:|---:|
+| 原 HB10 EP3 / checkpoint-906 | 80.59 | 100.00 | 13 | 22 | 66 |
+| matched merged EP3 初始化控制 | 81.68 | 100.00 | 11 | 25 | 65 |
+| GRPO v2 / checkpoint-64 | 81.68 | 100.00 | 11 | 25 | 65 |
+| GRPO v4 / checkpoint-64 | 78.61 | 100.00 | 15 | 22 | 64 |
+
+本次评分未显示 v2 相对合并初始化控制有整体改善；v4 内容分更低、严重 case 更多。以上为自动评审结果，不宣称统计显著性或实际视频质量。完整协议、SHA、各组 Top 5 及复现命令见 [新版评测报告](h3_prompt_rewriter_hb10_ep3_grpo_fixed_evaluation_20261007.md)。本地完整运行数据位于 `/home/xiaotong/h3_hb10_ep3_grpo_fixed_eval_20261007/`；旧评分与原始输出保留。
