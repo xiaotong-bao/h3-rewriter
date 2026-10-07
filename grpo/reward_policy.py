@@ -78,12 +78,36 @@ def validate_and_score(source, rewrite, requirements, result, require_state_audi
     assert math.isfinite(reward)
     result.update(requirements=requirements,items=issues,severity_counts=counts,reward=reward,retention=reward,
         maximum_severity=next((s for s in LEVELS if counts[s]),'none'))
+    if 'severity_review' in result:
+        apply_severity_review(result)
+    return result
+
+def apply_severity_review(result):
+    import copy
+    issues=copy.deepcopy(result['items'])
+    severe={i['id'] for i in issues if i['severity']=='severe'}
+    decisions=result['severity_review']
+    assert len(decisions)==len(severe) and {d['issue_id'] for d in decisions}==severe, 'Incomplete severe issue review'
+    lookup={d['issue_id']:d for d in decisions}
+    reviewed=[]
+    for item in issues:
+        if item['id'] in lookup:
+            d=lookup[item['id']]
+            assert d['final_severity'] in (*LEVELS,'none') and d['reason'].strip()
+            item.update(severity=d['final_severity'],severity_review=d)
+        if item['severity']!='none':reviewed.append(item)
+    counts={level:sum(i['severity']==level for i in reviewed) for level in LEVELS}
+    reward=1.-.8*min(counts['severe'],2)-.1*min(counts['general'],3)-.02*min(counts['review'],3)
+    result.update(primary_items=issues,items=reviewed,severity_counts=counts,reward=reward,retention=reward,
+                  maximum_severity=next((s for s in LEVELS if counts[s]),'none'))
     return result
 
 def positive_eligible(verdict, format_valid):
     if verdict.get('judge_failed') or not format_valid:return False
-    if any(s['status'] not in ('preserved','not_applicable') for s in verdict.get('state_audit',[])):return False
+    if 'severity_review' not in verdict and any(s['status'] not in ('preserved','not_applicable') for s in verdict.get('state_audit',[])):return False
     if verdict['severity_counts']['severe'] or verdict['unrequested_music'] or verdict['unrequested_dialogue']:return False
+    if 'severity_review' in verdict:
+        return not any(i['severity']=='review' for i in verdict['items'])
     critical={r['id'] for r in verdict['requirements'] if r['critical']}
     return not any(i['requirement_id'] in critical and i['status']!='preserved' for i in verdict['checklist'])
 

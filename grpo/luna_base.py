@@ -22,8 +22,6 @@ def schema_array(name,fields):
         'type':'object','properties':fields,'required':list(fields),'additionalProperties':False}}},
         'required':[name],'additionalProperties':False}
 
-RULES+=' Start/end reference frames need actual textual mapping or an unambiguous equivalent in the rewrite. Task-conditioning metadata is not rewrite evidence.'
-RULES+=' An unmentioned camera constraint is omitted, not partial. A close-up alone does not entail a static camera; a moving or resting hand says nothing about camera motion. For an atomic requirement, unrelated compatible facts do not count as partial evidence. Partial requires some of the requested meaning itself to be stated.'
 
 def invoke(payload,schema):
     CACHE.mkdir(exist_ok=True)

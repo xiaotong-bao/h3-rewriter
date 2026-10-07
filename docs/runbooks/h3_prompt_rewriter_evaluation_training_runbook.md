@@ -375,3 +375,37 @@ v4 在笑脸车窗 case 中漏判末句反转：雾蒸发后却仍遮住玻璃�
 入口 `review/unified_compare.py`。语义主表只统计五组共同有效配对；某一组 judge 失败，该 ID 在五组语义统计中均排除，报告未知数，不能冒充全101。raw格式使用同一检查器（支持 Image 1 和 <Picture 1>），分母为各组已审输出。语义保留、严重程度、状态结尾、配乐/台词单列，不能相加为总错误率。该比较统一评分口径，不宣称各组历史生成过程相同；图像忠实度及生成视频效果未验证。笑脸 case 已用于评分开发，不能再称其独立 held-out。
 
 实际本机工作目录：`/home/xiaotong/unified_fal_ep3_grpo_101_20261006`，独立 Astra gateway `127.0.0.1:8796`。结果文件 `COMPARISON.md`、`summary.json`、`audits.jsonl`；`COMPLETE` 仅在五组101条全部有效后写入。结果当前执行中，不能填写未完成的全量结论。
+
+
+## 16. 代码同步与 checkpoint 发布（2026-10-07）
+
+当前独立代码仓库为 `git@github.com:xiaotong-bao/h3-rewriter.git`（HB10：`/home/xiaotong/h3-rewriter`）。当前代码默认 JOB 是 `grpo_ep3_luna_2k_20261006`；reward profile 使用 Luna / `h3-reward-luna-v1` / 8797，evaluation profile 使用 Astra / `h3-eval-astra-v1` / 8798。两者共享 `grpo/judging_standard.py` 的严重程度准则，并对初次判为 severe 的问题独立复核；源要求审查与状态审查并发。历史 v2/v4/v5 的训练配置、缓存与统计口径保留。固定训练环境中 23 项回归测试通过；这不等于新 profile 已完成真实评审校准或新训练。
+
+本次明确选择四轮 TRL SFT（302/604/906/1208），以及 EP3 初始化的 v2、v4 GRPO 的 checkpoint-16/32/48/64 和 final_adapter，共 14 个目录。完整 checkpoint 包含 adapter、optimizer、scheduler、trainer_state 和八个 rank RNG；final_adapter 用于推理，不声明可恢复优化器训练。GRPO adapter 需要其对应的 merged EP3 初始化；本清单不包含 merged base，应按对应实验 prepare_merge 和模板 receipt 重建，不能直接把 GRPO adapter 加载到未经 EP3 合并的原始 Qwen。
+
+发布目标（仅目标；2026-10-07 凭据未配置，尚未完成本次上传）：
+
+```text
+s3://data-transfer-research/turboscale_migration_202603/xiaotong/h3_rewriter_sft_20261002/
+  trl_sft_official_v2_20261006/sft/run/checkpoint-{302,604,906,1208}/
+  grpo_ep3_luna_v2_20261006/pilot/checkpoint-{16,32,48,64}/
+  grpo_ep3_luna_v2_20261006/pilot/final_adapter/
+  grpo_ep3_luna_v4_20261006/pilot/checkpoint-{16,32,48,64}/
+  grpo_ep3_luna_v4_20261006/pilot/final_adapter/
+  checkpoint_publications/h3_checkpoint_publication_20261007.json
+```
+
+当前 EP3 本地路径为 `/data/xiaotong/h3_rewriter_sft_20261002/trl_sft_official_v2_20261006/run/checkpoint-906/`；历史 v2 GRPO 最终可恢复 checkpoint 为 `/data/xiaotong/h3_rewriter_sft_20261002/grpo_ep3_luna_v2_20261006/pilot/checkpoint-64/`，v4 使用对应 v4 目录。
+
+本次使用 checkpoint 专用工具，避免再次扫描或上传原始媒体、评审缓存及认证文件：
+
+```bash
+cd /home/xiaotong/h3-rewriter
+python3 publish_checkpoints.py \
+  --root /tmp/h3_checkpoint_publish_20261007 \
+  --folders /tmp/h3_checkpoint_publish_20261007/folders.json \
+  --receipt /home/xiaotong/h3_checkpoint_publication_20261007.json \
+  --profile r2w --upload
+```
+
+默认不上传。上传时逐文件核对远端大小及 SHA256 metadata，已存在且相同的对象复用，内容不同则拒绝覆盖。只有全部核验后才发布本次 receipt，并读回核对；以其 `uploaded=true`、`ready=true` 为准。本次独立 receipt 不替代 §10 覆盖数据与媒体的旧 READY.json。

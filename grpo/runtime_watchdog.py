@@ -1,13 +1,13 @@
 """Supervise only this job's local Linux gateway; never manage SSH sessions."""
 import fcntl,json,os,pathlib,signal,subprocess,sys,time,urllib.request
 ROOT=pathlib.Path(__file__).resolve().parent
-from run_config import PORT, JUDGE_REVISION as REVISION
+from run_config import PORT, JUDGE_MODEL, JUDGE_REVISION as REVISION
 def event(kind,**details):
  with (ROOT/'watchdog_events.jsonl').open('a') as log:log.write(json.dumps({'time':time.time(),'event':kind,**details})+'\n')
 def health():
  try:
   with urllib.request.urlopen(f'http://127.0.0.1:{PORT}/',timeout=5) as response:r=json.load(response)
-  return r.get('ready') and r.get('revision')==REVISION and r.get('model')=='gpt-6-luna',None
+  return r.get('ready') and r.get('revision')==REVISION and r.get('model')==JUDGE_MODEL,None
  except Exception as e:return False,repr(e)
 def main():
  lock=(ROOT/'runtime_watchdog.lock').open('a')

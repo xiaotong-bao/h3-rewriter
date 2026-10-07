@@ -34,3 +34,6 @@ v5 状态审查与验证记录见 [runbook](../docs/runbooks/h3_prompt_rewriter_
 
 ## 2k 评分问题预设计
 `prepare_prompts.py --sft <SFT> --output <JOB> --count 2000` 单独选取去重、隔离 held-out 的真实训练数据；按可用数据平衡文本/图文，不重复填充不足的任务类型。`design_questions.py --inputs <JOB>/pilot_inputs.jsonl --output <JOB>/scoring_questions.jsonl --port <local-port> --workers 16` 预提取要求，为每项要求和原文每个句子保存检查问题，逐条落盘并支持重跑补齐。结构校验不等于语义认证；该文件是评分设计资产，不会自动替换正在运行的 reward。
+
+
+2026-10-07 当前代码配置：`H3_JUDGE_PROFILE=reward` 使用 Luna / `h3-reward-luna-v1` / 8797；`evaluation` 使用 Astra / `h3-eval-astra-v1` / 8798。默认 JOB 为 `grpo_ep3_luna_2k_20261006`。两个 profile 共享 `judging_standard.py`，源要求审查和独立状态审查并发，再对 severe 候选做严重程度复核。以上为当前源码行为，历史 v2/v4/v5 运行保持其原配置，修改默认值不会迁移旧缓存或证明新 profile 已校准。

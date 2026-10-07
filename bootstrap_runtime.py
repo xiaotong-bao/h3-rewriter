@@ -2,7 +2,7 @@
 import argparse,hashlib,json,pathlib
 parser=argparse.ArgumentParser()
 parser.add_argument('mode',choices=['sft','grpo']);parser.add_argument('--root',type=pathlib.Path,default=pathlib.Path('/work'))
-parser.add_argument('--job',default='grpo_ep3_luna_v5_20261006')
+parser.add_argument('--job',default='grpo_ep3_luna_2k_20261006')
 parser.add_argument('--include-calibration-sources',action='store_true')
 args=parser.parse_args();root=args.root
 if args.mode=='sft':
@@ -24,6 +24,6 @@ else:
   sources += [r['original'] for r in cases()]
  allow={'sha256':sorted({hashlib.sha256(s.strip().encode()).hexdigest() for s in sources})}
  (job/'luna_approved_sources.json').write_text(json.dumps(allow))
- (job/'luna_external_data_approval.json').write_text(json.dumps({'approved':True,'scope':'User-authorized Linux-local v5 rerun: 256 training prompts, 101 evaluation prompts'+(' and synthetic regression sources' if args.include_calibration_sources else '')}))
- (job/'direct_grpo_authorization.json').write_text(json.dumps({'approved':True,'judge_revision':'ep3-v2-luna-state-v5','full_256_audit_gate_waived_by_user':True,'steps':64,'judge_concurrency':16}))
+ (job/'luna_external_data_approval.json').write_text(json.dumps({'approved':True,'scope':'User-authorized Linux-local Luna reward: training prompts, 101 evaluation prompts'+(' and synthetic regression sources' if args.include_calibration_sources else '')}))
+ (job/'direct_grpo_authorization.json').write_text(json.dumps({'approved':True,'judge_revision':'h3-reward-luna-v1','full_256_audit_gate_waived_by_user':True,'steps':64,'judge_concurrency':16}))
 print('Runtime receipts written locally for',args.mode)
