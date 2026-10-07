@@ -457,3 +457,8 @@ aws --profile r2w \
 ## 18. 旧 9B-v2 新标准重评（2026-10-07）
 
 用户提供 node21 原始输出的已复制文件，经本机核验 101 条、ID 无重复，SHA256 `f72c284bd4f988074824f1153d7dbf0f270b2d304f74804063d3ab26f91404b5`。与原 HB10 EP3 的原文和任务/时长/比例一致。Astra low 同版规则重评最终 101/101、失败 0：内容分 86.83、三字段格式 100、严重 7、一般 21、无问题 73。本次结果仍高于原 EP3 和 GRPO v2/v4。此前 87.43 为历史单次评审结果，不覆盖；单条 evidence-schema 重试记录及全部 7 个严重 case 见 [9B-v2 重评报告](h3_prompt_rewriter_9bv2_fixed_reevaluation_20261007.md)。完整本机数据：`/home/xiaotong/h3_9bv2_fixed_eval_20261007/`。
+
+
+## 当前 9B v2 userlike GRPO 实验
+
+数据、训练入口、Luna reward、每32步 Astra101、报告和 step224 S3备份见 [当前实验 runbook](h3_prompt_rewriter_9bv2_userlike_grpo_20261007.md)。
